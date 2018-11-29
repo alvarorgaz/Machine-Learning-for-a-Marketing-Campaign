@@ -15,8 +15,8 @@ The main aims of this project are:
 
 **Files in main folder:**
 - R Markdown files with the code of the project (numerically ordered by logical steps in a data science project)
-- *Data.xlsx*: this is the raw data
-- *Data.RData*:
+- Raw data in *Data.xlsx*
+- *Data.RData* file with:
   + *data*: dataframe with raw data preprocessed in file  *1. Preprocessing and Exploratory Data Analysis (EDA)*
   + *data_train*: dataframe with train data splitted in file *3.1. Supervised ML Validation Protocol*
   + *data_test*: dataframe with test data splitted in file *3.1. Supervised ML Validation Protocol*
