@@ -20,7 +20,7 @@ The main aims of this project are:
   + *data*: dataframe with raw data preprocessed in file  *1. Preprocessing and Exploratory Data Analysis (EDA)*
   + *data_train*: dataframe with train data splitted in file *3.1. Supervised ML Validation Protocol*
   + *data_test*: dataframe with test data splitted in file *3.1. Supervised ML Validation Protocol*
-  + *data_train_folds*: list with 5 validation folds or splits of the train data created in file *3.1. Supervised ML Validation Protocol*
+  + *data_train_folds*: list with 5 dataframes as validation folds or splits of the train data created in file *3.1. Supervised ML Validation Protocol*
   + *AUC*: function of the performance metric used for validation
 - *Outputs* folder with outputs of the code (numerically ordered as the code):
   + *.pdf* files with graphics and tables of results
