@@ -22,9 +22,9 @@ The main aims of this project are:
   + *data_test*: dataframe with test data splitted in file *3.1. Supervised ML Validation Protocol*
   + *data_train_folds*: list with 5 validation folds or splits of the train data created in file *3.1. Supervised ML Validation Protocol*
   + *AUC*: function of the performance metric used for validation
-- *Outputs* folder with outputs of the code:
-  + *.pdf* files with graphics and tables of results.
-  + *.RData* files with
+- *Outputs* folder with outputs of the code (numerically ordered as the code):
+  + *.pdf* files with graphics and tables of results
+  + *.RData* one file for each model containing a dataframe with the validation results (AUC by 5-Fold Cross-Validaton)
 
 **Code:** 
 
