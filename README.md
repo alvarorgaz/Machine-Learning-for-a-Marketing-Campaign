@@ -14,9 +14,17 @@ The main aims of this project are:
 - Apply supervised ML algorithms for predicting the probability of being good customer and comparing the predictive behaviour between models
 
 **Files in main folder:**
-- *Data.xlsx*: raw data
+- R Markdown files with the code of the project (numerically ordered by logical steps in a data science project)
+- *Data.xlsx*: this is the raw data
 - *Data.RData*:
-  + hola
+  + *data*: dataframe with raw data preprocessed in file  *1. Preprocessing and Exploratory Data Analysis (EDA)*
+  + *data_train*: dataframe with train data splitted in file *3.1. Supervised ML Validation Protocol*
+  + *data_test*: dataframe with test data splitted in file *3.1. Supervised ML Validation Protocol*
+  + *data_train_folds*: list with 5 validation folds or splits of the train data created in file *3.1. Supervised ML Validation Protocol*
+  + *AUC*: function of the performance metric used for validation
+- *Outputs* folder with outputs of the code:
+  + *.pdf* files with graphics and tables of results.
+  + *.RData* files with
 
 **Code:** 
 
