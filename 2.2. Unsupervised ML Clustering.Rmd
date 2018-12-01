@@ -60,7 +60,6 @@ We need to study the profile or main characteristics of every customers' cluster
 pdf("Outputs/2.2. Unsupervised ML Clustering - Hierarchical Profiling.pdf",width=10,height=5)
 
 for(feature in c(features_nominal,target)){
-  
   info <- table(data[,feature],data[,"cluster_hierarchical"])
   
   mosaic <- ggplot(data=as.data.frame(info)) + 
@@ -73,7 +72,6 @@ for(feature in c(features_nominal,target)){
 }
 
 for(feature in features_numeric){
-  
   boxplot <- ggplot(data=data,aes(x=factor(data[,"cluster_hierarchical"]),y=data[,feature])) +  
     geom_boxplot()  + 
     labs(title=paste0("Profiling of hierarchical cluster variable by ",feature),y=feature,x="Hierarchical cluster")
@@ -119,7 +117,6 @@ We need to study the profile or main characteristics of every customers' cluster
 pdf("Outputs/2.2. Unsupervised ML Clustering - KMeans Profiling.pdf",width=10,height=5)
 
 for(feature in c(features_nominal,target)){
-  
   info <- table(data[,feature],data[,"cluster_kmeans"])
   
   mosaic <- ggplot(data=as.data.frame(info)) + 
@@ -132,7 +129,6 @@ for(feature in c(features_nominal,target)){
 }
 
 for(feature in features_numeric){
-  
   boxplot <- ggplot(data=data,aes(x=factor(data[,"cluster_kmeans"]),y=data[,feature])) +  
     geom_boxplot()  + 
     labs(title=paste0("Profiling of Kmeans cluster variable by ",feature),y=feature,x="KMeans cluster")

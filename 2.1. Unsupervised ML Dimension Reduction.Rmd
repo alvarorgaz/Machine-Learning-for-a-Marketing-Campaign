@@ -1,0 +1,188 @@
+# 1. Preprocessed data loading
+
+Let's read the preprocessed data in the file *1. Preprocessing and Exploratory Data Analysis (EDA)*.
+```{r}
+load("Data.RData")
+library(ggplot2)
+library(ggmosaic)
+library(gridExtra)
+library(wordcloud)
+library(FactoMineR)
+```
+
+Assign every feature to its type: *ID*, *nominal* or *categorical*, *numeric*, and *target* or variable to predict.
+```{r}
+features_id <- c("ID")
+features_nominal <- c("Civil_Status","Children","Profession","Buy_A","Buy_B","Buy_C","Buy_D","Buy_E",
+                      "Number_Products","Interest","Card","Gender","Habitat_Type")
+features_numeric <- c("Age","Seniority","Time_Without_Buying_B","Total_Expenses","Time_Without_Buying")
+target <- "Class"
+```
+
+# 2. PCA: Principal Component Analysis (with numerical features)
+
+In this section of dimension reduction, only numerical features will be used with the well-known *unsupervised machine learning* algorithm *PCA*. We will get a new artificial features space where every new feature is a linear combination of the original numerical features, in such a way that the projected global variance of the original data is maximized in the first space dimensions or *principal components*.
+
+Let's train the *PCA*.
+
+*Note:* Since the numeric features are *min-max normalized*, we will not normalize the numerical features (setting the *center* and *scale.* parameters equal to *FALSE*) to have all the features centered in zero-mean and unit variance. But otherwise, we should do it because if not the units of features could affect the algorithm. For example, measuring weight in milligram will have a higher variance and mean than measuring it in kilograms.
+```{r}
+pca <- prcomp(data[,features_numeric],center=FALSE,scale.=FALSE)
+```
+
+Let's see the new artificial features space or *principal components*, and the projections of the first observations or customers into it.
+```{r}
+pdf("Outputs/2.1. Unsupervised ML Dimension Reduction - PCA Principal Components and Projections.pdf",width=12,height=5)
+pca_new_space <- pca$rotation
+pca_projections <- pca$x
+grid.arrange(tableGrob(pca_new_space),top="PCA new artificial space or Principal Components")
+grid.arrange(tableGrob(head(data[,features_numeric])),top="Original data of first customers")
+grid.arrange(tableGrob(head(pca_projections)),top="PCA projections of first customers in Principal Components ")
+dev.off()
+```
+
+What is the projection of a customer into the new artificial features space? Easy! Looking in the file *2.1. Unsupervised ML Dimension Reduction - Principal Components and Projections.pdf* we can see that for each numerical feature:
+- *Age*: first customer value is 0.35 and PC1 coefficient is -0.4136339
+- *Seniority*: first customer value is 0.21 and PC1 coefficient is -0.2128641
+- *Time_Without_Buying_B*: first customer value is 0 and PC1 coefficient is -0.2084525
+- *Total_Expenses*: first customer value is 0.25 and PC1 coefficient is -0.3920816
+- *Time_Without_Buying*: first customer value is 0.82 and PC1 coefficient is -0.7657777
+
+Then, let's calculate manually the projection of the first customer (row one) into the first *principal component* (PC1) by multiplying these vectors:
+$$\begin{bmatrix} 1 \ \ 0.35 \ \ 0.21 \ \ 0 \ \ 0.25 \ \ 0.82 \end{bmatrix} * \begin{bmatrix} -0.4136339 \\ -0.2128641 \\ -0.2084525 \\ -0.3920816 \\ -0.7657777 \end{bmatrix}=-0.915431417282516$$
+```{r}
+sum(data[1,features_numeric]*pca_new_space[,"PC1"]) # -0.915431417282516
+```
+
+Let's see the *scree plot* or the percentage of projected inertia or data variance by every *principal component*.
+- *PC1*: 81% out of total data variance
+- *PC2*: 10% out of total data variance
+- *PC3*: 4% out of total data variance
+- *PC4*: 3% out of total data variance
+- *PC5*: 2% out of total data variance
+```{r}
+eigen_values <- pca$sdev^2
+total_variance <- sum(eigen_values)
+eigen_values/total_variance*100 # 81.233506  9.413310  3.713629  3.455893  2.183663
+```
+
+# 2.1. Profiling of 2 first PCA Principal Components
+
+We can define the new artificial features space or *principal components* through the characteristics of customers or original data. For each feature, we will plot the projections of customers into the 2 first *principal components* coloured by original features.
+
+*Note:* We add the target variable to the profiling but it has not been used for training the algorithm.
+```{r}
+pdf("Outputs/2.1. Unsupervised ML Dimension Reduction - PCA Profiling of 2 first Principal Components.pdf",width=7.5,height=5)
+
+correlations <- cor(data[,features_numeric],pca_projections)
+cor_PC1 <- correlations[,"PC1"]
+cor_PC2 <- correlations[,"PC2"]
+textplot(x=cor_PC1,y=cor_PC2,words=features_numeric,xlim=c(-1,1),
+         ylim=c(-1,1),
+         xlab='Principal Component 1',cex.main=1,
+         ylab='Principal Component 2',main="Correlation between original data and PCA projections in 2 first Principal Components")
+axis(side=1,pos=0,labels=F)
+axis(side=3,pos=0,labels=F)
+axis(side=2,pos=0,labels=F)
+axis(side=4,pos=0,labels=F)
+arrows(0,0,cor_PC1,cor_PC2)
+
+for(feature in features_numeric){
+  scatter <- ggplot() +
+    geom_point(data=data[,features_numeric],aes(x=pca_projections[,"PC1"],y=pca_projections[,"PC2"],color=data[,feature])) +
+    scale_colour_gradientn(colours=c("blue","red")) +
+    labs(title=paste0("PCA projections of observations in 2 first Principal Components by ",feature),x="Principal Component 1",
+         y='Principal Component 2',colour=feature)
+  print(scatter)
+}
+
+for(feature in c(features_nominal,target)){
+  scatter <- ggplot()+
+    geom_point(data=data[,c(features_nominal,target)],aes(x=pca_projections[,"PC1"],y=pca_projections[,"PC2"],color=data[,feature]))+
+    labs(title=paste0("PCA projections of observations in 2 first Principal Components by ",feature),x="Principal Component 1",
+         y='Principal Component 2',colour=feature)
+  print(scatter)
+}
+
+dev.off()
+```
+
+# 3. MCA: Multiple Correspondence Analysis (with nominal features)
+
+In this section of dimension reduction, only nominal features will be used with the well-known *unsupervised machine learning* algorithm *MCA*. We will get a new artificial features space where every new feature is a linear combination of the original nominal features, in such a way that the projected global variance of the original data is maximized in the first space dimensions or *principal components*.
+
+As you may be wondering, how can we transform nominal features into a new numeric features space? In the *PCA* the number of coefficients to define each *Principal Component* was the number of numeric features, but now how much features we have in reality for training the model? The answer is as much as unique levels in all nominal features minus the number of nominal features (for avoiding singularity as in *one hot encoding*). Since we will use 13 nominal features with 30 different levels, the number of real features or coefficients to define each *Principal Component* will be 17.
+```{r}
+length(features_nominal) # 13
+sum(sapply(data[,features_nominal],function(x) length(unique(x)))) # 30
+```
+
+Let's train the *MCA*. 
+
+*Note:* The parameter *method* specifies the type of frequency table you want to create with the original nominal features, and we will choose the option *Burt*. Moreover, with the parameter *ncp* we will specify how much *principal components* we want to retain instead of 17.
+```{r}
+mca <- MCA(data[,features_nominal],method="Burt",graph=F,ncp=5)
+```
+
+Let's see the new artificial features space or *principal components*, and the projections of the first observations or customers into it.
+```{r}
+pdf("Outputs/2.1. Unsupervised ML Dimension Reduction - MCA Principal Components and Projections.pdf",width=12,height=10)
+mca_new_space <- mca$var$coord
+mca_projections <- mca$ind$coord
+grid.arrange(tableGrob(mca_new_space),top="MCA new artificial space or first 5 Principal Components out of 17")
+grid.arrange(tableGrob(head(data[,features_nominal])),top="Original data of first customers")
+grid.arrange(tableGrob(head(mca_projections)),top="MCA projections of first customers in first 5 Principal Components out of 17")
+dev.off()
+```
+
+Let's see the *scree plot* or the percentage of projected inertia or data variance by every *principal component*.
+- *PC1*: 29% out of total data variance
+- *PC2*: 14% out of total data variance
+- *PC3*: 8% out of total data variance
+- *PC4*: 7% out of total data variance
+- *PC5*: 6% out of total data variance
+- *PC6*: 5% out of total data variance
+- *PC7* to *PC17*: <5% out of total data variance
+```{r}
+mca$eig
+```
+
+# 3.1. Profiling of 2 first MCA Principal Components
+
+We can define the new artificial features space or *principal components* through the characteristics of customers or original data. For each feature, we will plot the projections of customers into the 2 first *principal components* coloured by original features.
+
+*Note:* We add the target variable to the profiling but it has not been used for training the algorithm.
+```{r}
+pdf("Outputs/2.1. Unsupervised ML Dimension Reduction - MCA Profiling of 2 first Principal Components.pdf",width=7.5,height=5)
+
+mca_new_space <- as.data.frame(mca_new_space)
+names(mca_new_space) <- paste0("PC",1:5)
+mca_new_space$Features <- unlist(sapply(features_nominal,function(feature) rep(feature,length(unique(data[,feature])))))
+mca_new_space$Levels <- rownames(mca_new_space)
+
+ggplot(mca_new_space,aes(x=PC1,y=PC2,label=Levels,color=Features)) +
+  geom_text() +
+  geom_hline(yintercept=0) +
+  geom_vline(xintercept=0) +
+  labs(title="Correlation between original data and MCA projections in 2 first Principal Components",
+       x="Principal Component 1",y='Principal Component 2')
+
+for(feature in features_numeric){
+  scatter <- ggplot() +
+    geom_point(data=data[,features_numeric],aes(x=mca_projections[,"Dim 1"],y=mca_projections[,"Dim 2"],color=data[,feature])) +
+    scale_colour_gradientn(colours=c("blue","red")) +
+    labs(title=paste0("MCA projections of observations in 2 first Principal Components by ",feature),x="Principal Component 1",
+         y='Principal Component 2',colour=feature)
+  print(scatter)
+}
+
+for(feature in c(features_nominal,target)){
+  scatter <- ggplot()+
+    geom_point(data=data[,c(features_nominal,target)],aes(x=mca_projections[,"Dim 1"],y=mca_projections[,"Dim 2"],color=data[,feature]))+
+    labs(title=paste0("MCA projections of observations in 2 first Principal Components by ",feature),x="Principal Component 1",
+         y='Principal Component 2',colour=feature)
+  print(scatter)
+}
+
+dev.off()
+```
