@@ -1,0 +1,151 @@
+# 1. Preprocessed data loading
+
+Let's read the preprocessed data in the file *1. Preprocessing and Exploratory Data Analysis (EDA)*.
+```{r}
+load("Data.RData")
+library(ggplot2)
+library(ggmosaic)
+library(gridExtra)
+```
+
+Assign every feature to its type: *ID*, *nominal* or *categorical*, *numeric*, and *target* or variable to predict.
+```{r}
+features_id <- c("ID")
+features_nominal <- c("Civil_Status","Children","Profession","Buy_A","Buy_B","Buy_C","Buy_D","Buy_E",
+                      "Number_Products","Interest","Card","Gender","Habitat_Type")
+features_numeric <- c("Age","Seniority","Time_Without_Buying_B","Total_Expenses","Time_Without_Buying")
+target <- "Class"
+```
+
+# 2. Hierarchical clustering
+
+Load the library of the model.
+```{r}
+library(cluster)
+```
+
+Create the *distance matrix* of customers, it means that the mathematical distance between the customers' observations is calculated using their values in the features. Since we have both numerical and nominal features we cannot use the *Euclidean* distance and we will use the *Gower* distance.
+```{r}
+distances_matrix <- daisy(data[,c(features_nominal,features_numeric)],metric="gower")
+```
+
+Create the *dendrogram* of our customers using the created *distance matrix* and the aggregation method of *Ward's minimum variance*. It means that at each step the pair of clusters with minimum between-cluster distance are merged, minimizing the total within-cluster variance.
+```{r}
+dendrogram <- hclust(distances_matrix,method="ward.D")
+```
+
+Observing the *dendrogram* (in file *2.2. Unsupervised ML Clustering - Hierarchical Dendrogram.pdf*), select the number of clusters that you want to create. In this case two or three clusters seems the most rationale choice, let's try with 2.
+
+*Note:* There is not an optimal choice for this step and it is equivalent to the parameter *K* or number of clusters desired in the *unsupervised machine learning* algorithm *KMeans*. Just remember that we are exploring data, and an exact mathematical formula will not define the different types of customers in a marketing campaign but will help to understand their differences and similarities.
+```{r}
+pdf("Outputs/2.2. Unsupervised ML Clustering - Hierarchical Dendrogram.pdf",width=10,height=5)
+plot(dendrogram,xlab="Observations or customers",sub="",ylab="Distances between clusters",
+     labels=FALSE,hang=-50,main="Hierarchical Dendrogram: Gower distances & Ward's aggregation method")
+abline(h=25,col="blue")
+legend("topright",legend="2 clusters selected",text.col="blue")
+dev.off()
+```
+
+What cluster does every customer or observation belong to? Create a new feature in the data containing the cluster of each observation.
+```{r}
+data$cluster_hierarchical <- factor(cutree(dendrogram,2))
+```
+
+# 2.1. Profiling of the hierarchical clusters
+
+We need to study the profile or main characteristics of every customers' cluster. For each feature: *mosaic* if nominal and *boxplot* if numeric, by defined clusters.
+
+*Note:* We add the target variable to the profiling but it has not been used for training the algorithm.
+```{r}
+pdf("Outputs/2.2. Unsupervised ML Clustering - Hierarchical Profiling.pdf",width=10,height=5)
+
+for(feature in c(features_nominal,target)){
+  
+  info <- table(data[,feature],data[,"cluster_hierarchical"])
+  
+  mosaic <- ggplot(data=as.data.frame(info)) + 
+    geom_mosaic(aes(weight=Freq,x=product(Var1,Var2),fill=Var1),show.legend=F) +
+    labs(title=paste0("Profiling of hierarchical cluster by ",feature),y=feature,x="Hierarchical cluster")
+  
+  info <- prop.table(info,2)
+  
+  grid.arrange(tableGrob(round(info,3)),mosaic,nrow=1)
+}
+
+for(feature in features_numeric){
+  
+  boxplot <- ggplot(data=data,aes(x=factor(data[,"cluster_hierarchical"]),y=data[,feature])) +  
+    geom_boxplot()  + 
+    labs(title=paste0("Profiling of hierarchical cluster variable by ",feature),y=feature,x="Hierarchical cluster")
+  
+  cluster_hierarchical_levels <- unique(data[,"cluster_hierarchical"])
+  info <- data.frame(Min=sapply(cluster_hierarchical_levels,function(x) min(data[data[,"cluster_hierarchical"]==x,feature])),
+                     P25=sapply(cluster_hierarchical_levels,function(x) quantile(data[data[,"cluster_hierarchical"]==x,feature],0.25)),
+                     Median=sapply(cluster_hierarchical_levels,function(x) median(data[data[,"cluster_hierarchical"]==x,feature])),
+                     P75=sapply(cluster_hierarchical_levels,function(x) quantile(data[data[,"cluster_hierarchical"]==x,feature],0.75)),
+                     Max=sapply(cluster_hierarchical_levels,function(x) max(data[data[,"cluster_hierarchical"]==x,feature])),
+                     SD=sapply(cluster_hierarchical_levels,function(x) sd(data[data[,"cluster_hierarchical"]==x,feature])))
+  
+  grid.arrange(tableGrob(round(info,3)),boxplot,nrow=1)
+}
+dev.off()
+```
+
+# 3. Non-Hierarchical clustering: KMeans
+
+In this section of clustering, only numerical features will be used with the well-known *unsupervised machine learning* algorithm *KMeans*. We will select two clusters as before (*K* parameter equal to 2) and for initializing the centroids or seeds (one point in the feataure space for each cluster), we will use the means of numerical features by hierarchical clusters instead of random seeds.
+```{r}
+centroid_1 <- sapply(data[data$cluster_hierarchical==1,features_numeric],mean)
+centroid_2 <- sapply(data[data$cluster_hierarchical==2,features_numeric],mean)
+```
+
+Let's train the algorithm *KMeans*.
+```{r}
+kmeans <- kmeans(data[,features_numeric],centers=rbind(centroid_1,centroid_2)) 
+```
+
+What cluster does every customer or observation belong to? Create a new feature in the data containing the cluster of each observation.
+
+```{r}
+data$cluster_kmeans <- factor(kmeans$cluster)
+```
+
+# 3.1. Profiling of the non-hierarchical KMeans clusters
+
+We need to study the profile or main characteristics of every customers' cluster. For each feature: *mosaic* if nominal and *boxplot* if numeric, by defined clusters.
+
+*Note:* We add the target variable to the profiling but it has not been used for training the algorithm.
+```{r}
+pdf("Outputs/2.2. Unsupervised ML Clustering - KMeans Profiling.pdf",width=10,height=5)
+
+for(feature in c(features_nominal,target)){
+  
+  info <- table(data[,feature],data[,"cluster_kmeans"])
+  
+  mosaic <- ggplot(data=as.data.frame(info)) + 
+    geom_mosaic(aes(weight=Freq,x=product(Var1,Var2),fill=Var1),show.legend=F) +
+    labs(title=paste0("Profiling of KMeans cluster by ",feature),y=feature,x="KMeans cluster")
+  
+  info <- prop.table(info,2)
+  
+  grid.arrange(tableGrob(round(info,3)),mosaic,nrow=1)
+}
+
+for(feature in features_numeric){
+  
+  boxplot <- ggplot(data=data,aes(x=factor(data[,"cluster_kmeans"]),y=data[,feature])) +  
+    geom_boxplot()  + 
+    labs(title=paste0("Profiling of Kmeans cluster variable by ",feature),y=feature,x="KMeans cluster")
+  
+  cluster_kmeans_levels <- unique(data[,"cluster_kmeans"])
+  info <- data.frame(Min=sapply(cluster_kmeans_levels,function(x) min(data[data[,"cluster_kmeans"]==x,feature])),
+                     P25=sapply(cluster_kmeans_levels,function(x) quantile(data[data[,"cluster_kmeans"]==x,feature],0.25)),
+                     Median=sapply(cluster_kmeans_levels,function(x) median(data[data[,"cluster_kmeans"]==x,feature])),
+                     P75=sapply(cluster_kmeans_levels,function(x) quantile(data[data[,"cluster_kmeans"]==x,feature],0.75)),
+                     Max=sapply(cluster_kmeans_levels,function(x) max(data[data[,"cluster_kmeans"]==x,feature])),
+                     SD=sapply(cluster_kmeans_levels,function(x) sd(data[data[,"cluster_kmeans"]==x,feature])))
+  
+  grid.arrange(tableGrob(round(info,3)),boxplot,nrow=1)
+}
+dev.off()
+```
